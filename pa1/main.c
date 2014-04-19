@@ -37,7 +37,7 @@ void handle_child(const local_id id_proc) __attribute__((noreturn));
 void init_message(Message * const msg, const char * const line, const MessageType type);
 
 extern char * optarg;
-local_id my_local_id;
+local_id my_local_id = 0;
 
 int main(int argc, char ** argv) {
 	pid_t pid;
@@ -72,6 +72,11 @@ void handle_child(const local_id _local_id) {
 
 	// дочерний процесс закрывает ненужные дескрипторы каналов
 	configure_pipes(my_local_id);
+
+	// создаем сообщение STARTED и отправляем его всем процессам
+	Message * msg = calloc(1, sizeof(Message));
+	init_message(msg, "HI!", STARTED);
+	send_multicast(NULL, msg);
 
 	_exit(0);
 }

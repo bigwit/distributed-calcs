@@ -36,6 +36,8 @@ int send_multicast(void * self, const Message * msg) {
 
 int receive(void * self, local_id from, Message * msg) {
 	int pipedes = get_read(my_local_id, from);
+	// сообщения ожидаются только от дочернего процесса,
+	// родительский только принимает сообщения
 	if (pipedes <= 0 || read(pipedes, msg, sizeof(Message)) == -1) {
 		return -1;
 	}
@@ -43,8 +45,10 @@ int receive(void * self, local_id from, Message * msg) {
 }
 
 int receive_any(void * self, Message * msg) {
-	for (local_id id_from = 0; id_from < num_proc; id_from++) {
+	// обходим все дочерние процессы, не затрагивая родительский
+	for (local_id id_from = 1; id_from < num_proc; id_from++) {
 		if (id_from != my_local_id) {
+			// и ожидаем сообщения от них
 			if (receive(self, id_from, msg) == -1) {
 				return -1;
 			}
