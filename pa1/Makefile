@@ -1,16 +1,20 @@
+CC=gcc
+OUTFILE=program
+CFLAGS=-Wall -std=c99 -pedantic
+
 all: clean install
 
 install: main.o pipe.o ipc.o
-	gcc -o program -std=c99 -Wall -pedantic main.o pipe.o ipc.o
+	$(CC) $(CFLAGS) -o $(OUTFILE) main.o pipe.o ipc.o
 
 main.o: main.c common.h pa1.h ipc.h pipe.h
-	gcc -c -std=c99 -Wall -pedantic main.c
+	$(CC) $(CFLAGS) -c main.c
 	
 pipe.o: pipe.c pipe.h
-	gcc -c -std=c99 -Wall -pedantic pipe.c
+	$(CC) $(CFLAGS) -c pipe.c
 	
 ipc.o: ipc.c pipe.h ipc.h
-	gcc -c -std=c99 -Wall -pedantic ipc.c
+	$(CC) $(CFLAGS) -c ipc.c
 	
 clean:
-	rm -f main.o pipe.o ipc.o program
+	rm -f main.o pipe.o ipc.o $(OUTFILE)
