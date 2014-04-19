@@ -87,11 +87,6 @@ int main(int argc, char ** argv) {
 		}
 	}
 	return 0;
-
-	// FIXME
-	// 2) logging
-	// 3) wait_all func()
-
 }
 
 void handle_child(const local_id _local_id) {
