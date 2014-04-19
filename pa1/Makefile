@@ -2,7 +2,7 @@ CC=gcc
 OUTFILE=program
 CFLAGS=-Wall -std=c99 -pedantic
 
-all: clean install
+all: install clean-obj
 
 install: main.o pipe.o ipc.o
 	$(CC) $(CFLAGS) -o $(OUTFILE) main.o pipe.o ipc.o
@@ -16,5 +16,8 @@ pipe.o: pipe.c pipe.h
 ipc.o: ipc.c pipe.h ipc.h
 	$(CC) $(CFLAGS) -c ipc.c
 	
-clean:
-	rm -f main.o pipe.o ipc.o $(OUTFILE)
+clean: clean-obj
+	rm -f $(OUTFILE)
+	
+clean-obj:
+	rm -f main.o pipe.o ipc.o
