@@ -95,6 +95,8 @@ void handle_child(const local_id _local_id) {
 	init_message(msg, "BY!", DONE);
 	send_multicast(NULL, msg);
 
+	free(msg);
+
 	// ожидаем от всех дочерних процессов сообщение DONE
 	wait_all(DONE);
 
