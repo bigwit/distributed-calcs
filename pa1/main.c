@@ -50,6 +50,7 @@ int main(int argc, char ** argv) {
 	pid_t pid;
 
 	if (getopt(argc, argv, "p:") == -1) {
+		fprintf(stderr, "Parameter '-p' is required\n");
 		_exit(-1);
 	}
 
@@ -72,6 +73,25 @@ int main(int argc, char ** argv) {
 			break;
 		}
 	}
+
+	// дожидаемся сообщений старта и завершения
+	// всех дочерних процессов
+	wait_all(STARTED);
+	wait_all(DONE);
+
+	for(int i = 0; i < num_proc; ++i) {
+		// ожидаем завершения всех дочерних процессов
+		if(wait(NULL) == -1) {
+			fprintf(stderr, "wait: unknown error\n");
+			_exit(-3);
+		}
+	}
+	return 0;
+
+	// FIXME
+	// 2) logging
+	// 3) wait_all func()
+
 }
 
 void handle_child(const local_id _local_id) {
