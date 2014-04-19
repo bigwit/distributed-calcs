@@ -1,3 +1,5 @@
+all: clean install
+
 install: main.o pipe.o ipc.o
 	gcc -o program -std=c99 -Wall -pedantic main.o pipe.o ipc.o
 
@@ -9,3 +11,6 @@ pipe.o: pipe.c pipe.h
 	
 ipc.o: ipc.c pipe.h ipc.h
 	gcc -c -std=c99 -Wall -pedantic ipc.c
+	
+clean:
+	rm -f main.o pipe.o ipc.o program
