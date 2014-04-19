@@ -56,3 +56,7 @@ int receive_any(void * self, Message * msg) {
 	}
 	return 0;
 }
+
+void wait_all(const MessageType type) {
+	// stub
+}

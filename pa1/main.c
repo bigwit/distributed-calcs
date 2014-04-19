@@ -5,16 +5,16 @@
  *      Author: nikit
  */
 
-#include <sys/types.h>
-#include <unistd.h>
 #include <getopt.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 #include <time.h>
-#include "ipc.h"
+#include <unistd.h>
 #include "common.h"
+#include "ipc.h"
 #include "pa1.h"
 #include "pipe.h"
 
@@ -35,6 +35,13 @@ void handle_child(const local_id id_proc) __attribute__((noreturn));
  * @param type тип сообщения
  */
 void init_message(Message * const msg, const char * const line, const MessageType type);
+
+/*
+ * Ожидает сообщения указанного типа от всех дочерних процессов
+ *
+ * @param type тип ожидаемого сообщения
+ */
+extern void wait_all(const MessageType type);
 
 extern char * optarg;
 local_id my_local_id = 0;
@@ -78,15 +85,30 @@ void handle_child(const local_id _local_id) {
 	init_message(msg, "HI!", STARTED);
 	send_multicast(NULL, msg);
 
+	// ожидаем от всех дочерних процессов сообщение STARTED
+	wait_all(STARTED);
+
+	// делаем полезную работу (логирование добавится позже...)
+
+	// отправляем всем сообщение DONE
+	memset(msg, 0, sizeof(Message));
+	init_message(msg, "BY!", DONE);
+	send_multicast(NULL, msg);
+
+	// ожидаем от всех дочерних процессов сообщение DONE
+	wait_all(DONE);
+
+	// завершаем процесс
 	_exit(0);
 }
 
 void init_message(Message * const msg, const char * const line, const MessageType type) {
 	MessageHeader header;
+	// заполнение заголовка сообщения
 	header.s_local_time = (timestamp_t) time(NULL); // время создания сообщения
 	header.s_magic = MESSAGE_MAGIC; // магическое число по заданию
-	strcpy(msg->s_payload, line);
-	header.s_payload_len = strlen(line); // текст сообщения
-	header.s_type = type;
+	header.s_payload_len = strlen(line); // длина передаваемого сообщения
+	header.s_type = type; // тип сообщения
+	strcpy(msg->s_payload, line); // текст сообщения
 	msg->s_header = header;
 }
