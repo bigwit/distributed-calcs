@@ -5,6 +5,8 @@
  *      Author: nikit
  */
 
+#include <malloc.h>
+#include <string.h>
 #include <unistd.h>
 #include "ipc.h"
 #include "pipe.h"
@@ -51,12 +53,49 @@ int receive_any(void * self, Message * msg) {
 			// и ожидаем сообщения от них
 			if (receive(self, id_from, msg) == -1) {
 				return -1;
+			} else {
+				return 0;
 			}
 		}
 	}
 	return 0;
 }
 
+static int check_status(const char * const status) {
+	for (local_id id_proc = 0; id_proc < num_proc; id_proc++) {
+		if (!status[id_proc]) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
 void wait_all(const MessageType type) {
-	// stub
+	// хранит информацию о факте получения сообщения от
+	// дочерних процессов - 0 - сообщение не получено,
+	// 1 - сообщение получено
+	char * status = calloc(num_proc, sizeof(char));
+	// сразу исключаем принятие сообщений от родительского и текущего процесса
+	status[0] = 1;
+	status[my_local_id] = 1;
+	// выделяем память под сообщение для сравнения типов
+	Message * msg = calloc(1, sizeof(Message));
+	local_id id_from = 0;
+	while (!check_status(status)) {
+		// ищем следующий идентификатор процесса,
+		// от которого не получено сообщение
+		while (status[id_from]) {
+			id_from++;
+		}
+
+		// получаем сообщение от процесса
+		memset(msg, 0, sizeof(Message));
+		receive(NULL, id_from, msg);
+		// проверяем, что тип полученного сообщения совпадает с ожидаемым
+		if (msg->s_header.s_type == type && status[id_from]) {
+			status[id_from] = 1;
+		}
+	}
+	free(status);
+	free(msg);
 }
