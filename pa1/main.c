@@ -7,12 +7,14 @@
 
 #include <getopt.h>
 #include <malloc.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <wait.h>
 #include "common.h"
 #include "ipc.h"
 #include "pa1.h"
@@ -60,29 +62,31 @@ int main(int argc, char ** argv) {
 		_exit(-2);
 	}
 
-	init_pipes((size_t) num_proc);
+	init_pipes((size_t) num_proc + 1);
 
-	for (size_t i = 0; i < num_proc; i++) {
+	for (size_t i = 1; i <= num_proc; i++) {
 		switch (pid = fork()) {
 		case -1:
 			_exit(-1);
 		case 0:
 			handle_child(i);
-			break;
-		default:
-			break;
 		}
 	}
 
+	configure_pipes(0);
+
 	// дожидаемся сообщений старта и завершения
 	// всех дочерних процессов
+	printf("wait STARTED...\n");
 	wait_all(STARTED);
+	printf("all STARTED received from PARENT\n");
 	wait_all(DONE);
+	printf("all DONE received from PARENT\n");
 
 	for(int i = 0; i < num_proc; ++i) {
 		// ожидаем завершения всех дочерних процессов
 		if(wait(NULL) == -1) {
-			fprintf(stderr, "wait: unknown error\n");
+			perror("wait");
 			_exit(-3);
 		}
 	}
@@ -91,6 +95,7 @@ int main(int argc, char ** argv) {
 
 void handle_child(const local_id _local_id) {
 	my_local_id = _local_id;
+	printf(log_started_fmt, _local_id, getpid(), getppid());
 
 	// дочерний процесс закрывает ненужные дескрипторы каналов
 	configure_pipes(my_local_id);
@@ -102,8 +107,11 @@ void handle_child(const local_id _local_id) {
 
 	// ожидаем от всех дочерних процессов сообщение STARTED
 	wait_all(STARTED);
+	printf(log_received_all_started_fmt, _local_id);
 
 	// делаем полезную работу (логирование добавится позже...)
+
+	printf(log_done_fmt, _local_id);
 
 	// отправляем всем сообщение DONE
 	memset(msg, 0, sizeof(Message));
@@ -114,6 +122,8 @@ void handle_child(const local_id _local_id) {
 
 	// ожидаем от всех дочерних процессов сообщение DONE
 	wait_all(DONE);
+
+	printf(log_received_all_done_fmt, _local_id);
 
 	// завершаем процесс
 	_exit(0);
