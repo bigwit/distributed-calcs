@@ -43,7 +43,7 @@ void init_message(Message * const msg, const char * const line, const MessageTyp
  *
  * @param type тип ожидаемого сообщения
  */
-extern void wait_all(const MessageType type);
+extern int wait_all(const MessageType type);
 
 extern char * optarg;
 local_id my_local_id = 0;
@@ -77,11 +77,8 @@ int main(int argc, char ** argv) {
 
 	// дожидаемся сообщений старта и завершения
 	// всех дочерних процессов
-	printf("wait STARTED...\n");
 	wait_all(STARTED);
-	printf("all STARTED received from PARENT\n");
 	wait_all(DONE);
-	printf("all DONE received from PARENT\n");
 
 	for(int i = 0; i < num_proc; ++i) {
 		// ожидаем завершения всех дочерних процессов
@@ -116,12 +113,18 @@ void handle_child(const local_id _local_id) {
 	// отправляем всем сообщение DONE
 	memset(msg, 0, sizeof(Message));
 	init_message(msg, "BY!", DONE);
-	send_multicast(NULL, msg);
+	if (send_multicast(NULL, msg) < 0) {
+		perror("send_multicast");
+		_exit(-1);
+	}
 
 	free(msg);
 
 	// ожидаем от всех дочерних процессов сообщение DONE
-	wait_all(DONE);
+	if (wait_all(DONE) < 0) {
+		perror("wait_all");
+		_exit(-1);
+	}
 
 	printf(log_received_all_done_fmt, _local_id);
 

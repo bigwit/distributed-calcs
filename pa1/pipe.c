@@ -24,7 +24,6 @@ pipe_t * pipes;
 size_t num_proc;
 
 int init_pipes(const size_t _num_proc) {
-	printf("init pipes...\n");
 	// если ранее уже выделялась память под каналы,
 	// все каналы будут закрыты и память будет освобождена
 	if (pipes != NULL) {
@@ -41,21 +40,15 @@ int init_pipes(const size_t _num_proc) {
 			// на главной диагонали все каналы должны быть закрыты
 			if (i != j) {
 				if (pipe((int *) get(i, j)) == -1) {
-					printf("returning error with open pipe %d\n", _num_proc);
 					return -1;
 				}
-				printf("%d/%d\t", get(i, j)->read, get(i, j)->write);
-			} else {
-				printf("0/0\t");
 			}
 		}
-		printf("\n");
 	}
 	return 0;
 }
 
 void configure_pipes(const local_id id_proc) {
-	printf("configure pipes with local id %d...\n", id_proc);
 	pipe_t * pipe;
 
 	// Процессы закрывают дескрипторы по след. правилам -
@@ -88,9 +81,7 @@ void configure_pipes(const local_id id_proc) {
 				close(pipe->write);
 				pipe->write = 0;
 			}
-			//printf("%d/%d ", pipe->read != 0, pipe->write != 0);
 		}
-		//printf("\n");
 	}
 }
 
