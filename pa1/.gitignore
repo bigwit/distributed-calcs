@@ -2,3 +2,5 @@
 /main.o
 /pipe.o
 /program
+/events.log
+/pipes.log
