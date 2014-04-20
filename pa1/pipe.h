@@ -69,4 +69,7 @@ int get_read(const local_id id_src, const local_id id_dst);
  */
 int get_write(const local_id id_src, const local_id id_dst);
 
+/* запись каналов в лог */
+void flush_pipes_to_log(size_t num_proc);
+
 #endif /* PIPE_H_ */

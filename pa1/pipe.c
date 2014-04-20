@@ -9,13 +9,22 @@
 #include <unistd.h>
 #include <stddef.h>
 #include <malloc.h>
+#include <fcntl.h>
+#include <string.h>
 #include "pipe.h"
+#include "common.h"
+
+#define PERM 0666
+#define LOG_FILE_FLAGS O_CREAT | O_APPEND | O_TRUNC | O_WRONLY
 
 /* Закрывает все дескрипторы каналов */
 static void close_all(void);
 
 /* Получить канал в указанной позиции */
 static pipe_t * get(const size_t i, const size_t j);
+
+/* запись каналов в лог */
+void flush_pipes_to_log(size_t num_proc);
 
 /* дескрипторы каналов */
 pipe_t * pipes;
@@ -45,6 +54,7 @@ int init_pipes(const size_t _num_proc) {
 			}
 		}
 	}
+
 	return 0;
 }
 
@@ -115,4 +125,26 @@ static void close_all(void) {
 		}
 		i++;
 	}
+}
+
+int pi_log;
+char * log_pipe_frm = "pipe from %d to %d with desc %d\n";
+
+void flush_pipes_to_log(size_t num_proc) {
+
+	pi_log = open(pipes_log, LOG_FILE_FLAGS, PERM);
+	char log_msgs[1024];
+
+	for(int i = 0; i < num_proc; ++i) {
+		for(int j = 0; j < num_proc; ++j) {
+			pipe_t * p = get(i , j);
+			if(p != NULL) {
+				sprintf(log_msgs, log_pipe_frm, i, j, 0);
+				printf(log_msgs, NULL);
+				write(pi_log, log_msgs, strlen(log_msgs));
+			}
+		}
+	}
+
+	close(pi_log);
 }

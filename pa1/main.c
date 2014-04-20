@@ -53,7 +53,6 @@ extern int wait_all(const MessageType type);
 
 extern char * optarg;
 local_id my_local_id = 0;
-int pi_log;
 int ev_log;
 
 char log_msg[LIMIT_SIZE_LOG_MESSAGE];
@@ -72,10 +71,9 @@ int main(int argc, char ** argv) {
 		_exit(-2);
 	}
 
-	pi_log = open(pipes_log, LOG_FILE_FLAGS, PERM);
 	ev_log = open(evengs_log, LOG_FILE_FLAGS, PERM);
-	if (pi_log == -1 || ev_log == -1) {
-		fprintf(stderr, "Logs is not initialize\n");
+	if (ev_log == -1) {
+		fprintf(stderr, "Log 'events' is not initialize\n");
 		_exit(-8);
 	}
 
@@ -99,6 +97,8 @@ int main(int argc, char ** argv) {
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
+	flush_pipes_to_log(num_proc);
+
 	wait_all(DONE);
 	sprintf(log_msg, log_received_all_done_fmt, 0);
 	printf(log_msg, NULL);
@@ -112,7 +112,6 @@ int main(int argc, char ** argv) {
 		}
 	}
 
-	close(pi_log);
 	close(ev_log);
 
 	return 0;
@@ -166,7 +165,6 @@ void handle_child(const local_id _local_id) {
 	write(ev_log, log_msg, strlen(log_msg));
 
 	// завершаем процесс
-	close(pi_log);
 	close(ev_log);
 	_exit(0);
 }
