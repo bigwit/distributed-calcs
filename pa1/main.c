@@ -97,12 +97,12 @@ int main(int argc, char ** argv) {
 	wait_all(STARTED);
 	sprintf(log_msg, log_received_all_started_fmt, 0);
 	printf(log_msg, NULL);
-	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
+	write(ev_log, log_msg, strlen(log_msg));
 
 	wait_all(DONE);
 	sprintf(log_msg, log_received_all_done_fmt, 0);
 	printf(log_msg, NULL);
-	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
+	write(ev_log, log_msg, strlen(log_msg));
 
 	for (int i = 0; i < num_proc; ++i) {
 		// ожидаем завершения всех дочерних процессов
@@ -122,7 +122,7 @@ void handle_child(const local_id _local_id) {
 	my_local_id = _local_id;
 	sprintf(log_msg, log_started_fmt, _local_id, getpid(), getppid());
 	printf(log_msg, NULL);
-	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
+	write(ev_log, log_msg, strlen(log_msg));
 
 	// дочерний процесс закрывает ненужные дескрипторы каналов
 	configure_pipes(my_local_id);
@@ -136,13 +136,13 @@ void handle_child(const local_id _local_id) {
 	wait_all(STARTED);
 	sprintf(log_msg, log_received_all_started_fmt, _local_id);
 	printf(log_msg, NULL);
-	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
+	write(ev_log, log_msg, strlen(log_msg));
 
 	// делаем полезную работу (логирование добавится позже...)
 
 	sprintf(log_msg, log_done_fmt, _local_id);
 	printf(log_msg, NULL);
-	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
+	write(ev_log, log_msg, strlen(log_msg));
 
 	// отправляем всем сообщение DONE
 	memset(msg, 0, sizeof(Message));
@@ -163,7 +163,7 @@ void handle_child(const local_id _local_id) {
 	// write to log (received_all_done)
 	sprintf(log_msg, log_received_all_done_fmt, _local_id);
 	printf(log_msg, NULL);
-	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
+	write(ev_log, log_msg, strlen(log_msg));
 
 	// завершаем процесс
 	close(pi_log);
