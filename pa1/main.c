@@ -60,7 +60,10 @@ char log_msg[LIMIT_SIZE_LOG_MESSAGE];
 int main(int argc, char ** argv) {
 	pid_t pid;
 
-	if (getopt(argc, argv, "p:") == -1) {
+	switch (getopt(argc, argv, "p:")) {
+	case '?':
+		_exit(-1);
+	case -1:
 		fprintf(stderr, "Parameter '-p' is required\n");
 		_exit(-1);
 	}
