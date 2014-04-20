@@ -79,6 +79,8 @@ int main(int argc, char ** argv) {
 
 	init_pipes((size_t) num_proc + 1);
 
+	flush_pipes_to_log(num_proc);
+
 	for (size_t i = 1; i <= num_proc; i++) {
 		switch (pid = fork()) {
 		case -1:
@@ -96,8 +98,6 @@ int main(int argc, char ** argv) {
 	sprintf(log_msg, log_received_all_started_fmt, 0);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
-
-	flush_pipes_to_log(num_proc);
 
 	wait_all(DONE);
 	sprintf(log_msg, log_received_all_done_fmt, 0);
