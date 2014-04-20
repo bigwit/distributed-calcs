@@ -85,8 +85,7 @@ void configure_pipes(const local_id id_proc) {
 				pipe->read = 0;
 			}
 			// если локальный id процесса совпадает с номером столбца
-			// или процесс является родительским
-			if (j == id_proc || id_proc == 0) {
+			if (j == id_proc) {
 				// закрыть на запись, оставить на чтение
 				close(pipe->write);
 				pipe->write = 0;
