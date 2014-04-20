@@ -22,7 +22,7 @@
 #include "pipe.h"
 
 #define LIMIT_SIZE_LOG_MESSAGE 1024
-#define LOG_FILE_FLAGS O_CREAT | O_APPEND | 0666
+#define LOG_FILE_FLAGS O_CREAT | O_APPEND | O_TRUNC | O_WRONLY
 
 /*
  * Определяет действия дочернего процесса. Данная
