@@ -22,6 +22,7 @@
 #include "pipe.h"
 
 #define LIMIT_SIZE_LOG_MESSAGE 1024
+#define LOG_FILE_FLAGS O_CREAT | O_APPEND | 0666
 
 /*
  * Определяет действия дочернего процесса. Данная
@@ -70,8 +71,8 @@ int main(int argc, char ** argv) {
 		_exit(-2);
 	}
 
-	pi_log = open(pipes_log, O_CREAT | O_TRUNC | O_APPEND);
-	ev_log = open(evengs_log, O_CREAT | O_TRUNC | O_APPEND);
+	pi_log = open(pipes_log, LOG_FILE_FLAGS);
+	ev_log = open(evengs_log, LOG_FILE_FLAGS);
 	if (pi_log == -1 || ev_log == -1) {
 		fprintf(stderr, "Logs is not initialize\n");
 		_exit(-8);
@@ -164,6 +165,8 @@ void handle_child(const local_id _local_id) {
 	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
 
 	// завершаем процесс
+	close(pi_log);
+	close(ev_log);
 	_exit(0);
 }
 
