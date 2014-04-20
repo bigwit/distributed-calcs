@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
 #include <wait.h>
@@ -19,6 +20,8 @@
 #include "ipc.h"
 #include "pa1.h"
 #include "pipe.h"
+
+#define LIMIT_SIZE_LOG_MESSAGE 1024
 
 /*
  * Определяет действия дочернего процесса. Данная
@@ -36,7 +39,8 @@ void handle_child(const local_id id_proc) __attribute__((noreturn));
  * @param msg выделенная память под сообщение
  * @param type тип сообщения
  */
-void init_message(Message * const msg, const char * const line, const MessageType type);
+void init_message(Message * const msg, const char * const line,
+		const MessageType type);
 
 /*
  * Ожидает сообщения указанного типа от всех дочерних процессов
@@ -47,6 +51,10 @@ extern int wait_all(const MessageType type);
 
 extern char * optarg;
 local_id my_local_id = 0;
+int pi_log;
+int ev_log;
+
+char log_msg[LIMIT_SIZE_LOG_MESSAGE];
 
 int main(int argc, char ** argv) {
 	pid_t pid;
@@ -60,6 +68,13 @@ int main(int argc, char ** argv) {
 	if (num_proc <= 0 || num_proc > 10) {
 		fprintf(stderr, "Invalid number processes\n");
 		_exit(-2);
+	}
+
+	pi_log = open(pipes_log, O_CREAT | O_TRUNC | O_APPEND);
+	ev_log = open(evengs_log, O_CREAT | O_TRUNC | O_APPEND);
+	if (pi_log == -1 || ev_log == -1) {
+		fprintf(stderr, "Logs is not initialize\n");
+		_exit(-8);
 	}
 
 	init_pipes((size_t) num_proc + 1);
@@ -78,21 +93,34 @@ int main(int argc, char ** argv) {
 	// дожидаемся сообщений старта и завершения
 	// всех дочерних процессов
 	wait_all(STARTED);
-	wait_all(DONE);
+	sprintf(log_msg, log_received_all_started_fmt, 0);
+	printf(log_msg, NULL);
+	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
 
-	for(int i = 0; i < num_proc; ++i) {
+	wait_all(DONE);
+	sprintf(log_msg, log_received_all_done_fmt, 0);
+	printf(log_msg, NULL);
+	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
+
+	for (int i = 0; i < num_proc; ++i) {
 		// ожидаем завершения всех дочерних процессов
-		if(wait(NULL) == -1) {
+		if (wait(NULL) == -1) {
 			perror("wait");
 			_exit(-3);
 		}
 	}
+
+	close(pi_log);
+	close(ev_log);
+
 	return 0;
 }
 
 void handle_child(const local_id _local_id) {
 	my_local_id = _local_id;
-	printf(log_started_fmt, _local_id, getpid(), getppid());
+	sprintf(log_msg, log_started_fmt, _local_id, getpid(), getppid());
+	printf(log_msg, NULL);
+	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
 
 	// дочерний процесс закрывает ненужные дескрипторы каналов
 	configure_pipes(my_local_id);
@@ -104,18 +132,22 @@ void handle_child(const local_id _local_id) {
 
 	// ожидаем от всех дочерних процессов сообщение STARTED
 	wait_all(STARTED);
-	printf(log_received_all_started_fmt, _local_id);
+	sprintf(log_msg, log_received_all_started_fmt, _local_id);
+	printf(log_msg, NULL);
+	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
 
 	// делаем полезную работу (логирование добавится позже...)
 
-	printf(log_done_fmt, _local_id);
+	sprintf(log_msg, log_done_fmt, _local_id);
+	printf(log_msg, NULL);
+	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
 
 	// отправляем всем сообщение DONE
 	memset(msg, 0, sizeof(Message));
 	init_message(msg, "BY!", DONE);
 	if (send_multicast(NULL, msg) < 0) {
 		perror("send_multicast");
-		_exit(-1);
+		_exit(-12);
 	}
 
 	free(msg);
@@ -123,16 +155,20 @@ void handle_child(const local_id _local_id) {
 	// ожидаем от всех дочерних процессов сообщение DONE
 	if (wait_all(DONE) < 0) {
 		perror("wait_all");
-		_exit(-1);
+		_exit(-11);
 	}
 
-	printf(log_received_all_done_fmt, _local_id);
+	// write to log (received_all_done)
+	sprintf(log_msg, log_received_all_done_fmt, _local_id);
+	printf(log_msg, NULL);
+	write(ev_log, log_msg, LIMIT_SIZE_LOG_MESSAGE);
 
 	// завершаем процесс
 	_exit(0);
 }
 
-void init_message(Message * const msg, const char * const line, const MessageType type) {
+void init_message(Message * const msg, const char * const line,
+		const MessageType type) {
 	MessageHeader header;
 	// заполнение заголовка сообщения
 	header.s_local_time = (timestamp_t) time(NULL); // время создания сообщения
