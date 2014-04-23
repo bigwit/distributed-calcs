@@ -107,6 +107,8 @@ int main(int argc, char ** argv) {
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
+	close_all();
+
 	for (int i = 0; i < num_proc; ++i) {
 		// ожидаем завершения всех дочерних процессов
 		if (wait(NULL) == -1) {
@@ -167,6 +169,8 @@ void handle_child(const local_id _local_id) {
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
+	// закрываем все открытые дескрипторы каналов
+	close_all();
 	// завершаем процесс
 	close(ev_log);
 	_exit(0);

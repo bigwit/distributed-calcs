@@ -17,9 +17,6 @@
 #define PERM 0666
 #define LOG_FILE_FLAGS O_CREAT | O_APPEND | O_TRUNC | O_WRONLY
 
-/* Закрывает все дескрипторы каналов */
-static void close_all(void);
-
 /* Получить канал в указанной позиции */
 static pipe_t * get(const size_t i, const size_t j);
 
@@ -111,7 +108,7 @@ static pipe_t * get(const size_t i, const size_t j) {
 	return NULL;
 }
 
-static void close_all(void) {
+void close_all(void) {
 	pipe_t * i = pipes;
 	while (i != NULL) {
 		if (i->read != 0) {
@@ -126,12 +123,10 @@ static void close_all(void) {
 	}
 }
 
-int pi_log;
-char * log_pipe_frm = "pipe from %d to %d with read desc %d and wrire desc %d\n";
+const char * const log_pipe_frm = "pipe from %d to %d with read desc %d and wrire desc %d\n";
 
 void flush_pipes_to_log() {
-
-	pi_log = open(pipes_log, LOG_FILE_FLAGS, PERM);
+	int pi_log = open(pipes_log, LOG_FILE_FLAGS, PERM);
 	char log_msgs[1024];
 
 	for(int i = 0; i < num_proc; ++i) {
