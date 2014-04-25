@@ -71,18 +71,23 @@ void configure_pipes(const local_id id_proc) {
 			// если канал никак не связан с данными процессами
 			if (i != id_proc && j != id_proc) {
 				// то закрыть оба дескриптора
-				close(pipe->read);
-				close(pipe->write);
-				pipe->read = pipe->write = 0;
+				if (pipe->read != 0) {
+					close(pipe->read);
+					pipe->read = 0;
+				}
+				if (pipe->write != 0) {
+					close(pipe->write);
+					pipe->write = 0;
+				}
 			}
 			// если локальный id процесса совпадает с номером строки
-			if (i == id_proc) {
+			if (i == id_proc && pipe->read != 0) {
 				// закрыть на чтение, оставить на запись
 				close(pipe->read);
 				pipe->read = 0;
 			}
 			// если локальный id процесса совпадает с номером столбца
-			if (j == id_proc) {
+			if (j == id_proc && pipe->write != 0) {
 				// закрыть на запись, оставить на чтение
 				close(pipe->write);
 				pipe->write = 0;
@@ -110,7 +115,7 @@ static pipe_t * get(const size_t i, const size_t j) {
 
 void close_all(void) {
 	pipe_t * i = pipes;
-	while (i != NULL) {
+	for (int index = 0; index < num_proc; index++) {
 		if (i->read != 0) {
 			close(i->read);
 			i->read = 0;
@@ -123,16 +128,17 @@ void close_all(void) {
 	}
 }
 
-const char * const log_pipe_frm = "pipe from %d to %d with read desc %d and wrire desc %d\n";
+const char * const log_pipe_frm =
+		"pipe from %d to %d with read desc %d and wrire desc %d\n";
 
 void flush_pipes_to_log() {
 	int pi_log = open(pipes_log, LOG_FILE_FLAGS, PERM);
 	char log_msgs[1024];
 
-	for(int i = 0; i < num_proc; ++i) {
-		for(int j = 0; j < num_proc; ++j) {
-			pipe_t * p = get(i , j);
-			if(p != NULL) {
+	for (int i = 0; i < num_proc; ++i) {
+		for (int j = 0; j < num_proc; ++j) {
+			pipe_t * p = get(i, j);
+			if (p != NULL) {
 				sprintf(log_msgs, log_pipe_frm, i, j, p->read, p->write);
 				write(pi_log, log_msgs, strlen(log_msgs));
 			}

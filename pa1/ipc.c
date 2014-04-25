@@ -41,7 +41,11 @@ int receive(void * self, local_id from, Message * msg) {
 	int pipedes = get_read(my_local_id, from);
 	// сообщения ожидаются только от дочернего процесса,
 	// родительский только принимает сообщения
-	if (pipedes <= 0 || read(pipedes, msg, sizeof(Message)) == -1) {
+	if (pipedes <= 0) {
+		return -1;
+	}
+	int bytes = read(pipedes, msg, sizeof(Message));
+	if (bytes == -1) {
 		return -1;
 	}
 	return 0;
@@ -61,15 +65,15 @@ int receive_any(void * self, Message * msg) {
 	}
 	return 0;
 }
-
-static int check_status(const char * const status) {
-	for (local_id id_proc = 0; id_proc < num_proc; id_proc++) {
-		if (!status[id_proc]) {
-			return 0;
-		}
-	}
-	return 1;
-}
+//
+//static int check_status(const char * const status) {
+//	for (local_id id_proc = 0; id_proc < num_proc; id_proc++) {
+//		if (!status[id_proc]) {
+//			return 0;
+//		}
+//	}
+//	return 1;
+//}
 
 int wait_all(const MessageType type) {
 	// хранит информацию о факте получения сообщения от
@@ -81,23 +85,28 @@ int wait_all(const MessageType type) {
 	status[my_local_id] = 1;
 	// выделяем память под сообщение для сравнения типов
 	Message * msg = calloc(1, sizeof(Message));
-	local_id id_from = 0;
-	while (!check_status(status)) {
+//	local_id id_from = 0;
+	//while (!check_status(status)) {
+	for (int i = 1; i < num_proc; i++) {
 		// ищем следующий идентификатор процесса,
 		// от которого не получено сообщение
-		while (status[id_from]) {
-			id_from = (id_from < (num_proc - 1)) ? id_from + 1 : 0;
-		}
+//		while (status[id_from]) {
+//			id_from = (id_from < (num_proc - 1)) ? id_from + 1 : 0;
+//		}
 
+		if (i == my_local_id) {
+			continue;
+		}
 		// получаем сообщение от процесса
 		memset(msg, 0, sizeof(Message));
-		if (receive(NULL, id_from, msg) != 0) {
+		int result = receive(NULL, i, msg);
+		if (result != 0) {
 			return -1;
 		}
 		// проверяем, что тип полученного сообщения совпадает с ожидаемым
-		if (msg->s_header.s_type == type && status[id_from] == 0) {
-			status[id_from] = 1;
-		}
+//		if (msg->s_header.s_type == type && status[i] == 0) {
+//			status[id_from] = 1;
+//		}
 	}
 	free(status);
 	free(msg);

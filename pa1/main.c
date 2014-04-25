@@ -107,8 +107,6 @@ int main(int argc, char ** argv) {
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
-	close_all();
-
 	for (int i = 0; i < num_proc; ++i) {
 		// ожидаем завершения всех дочерних процессов
 		if (wait(NULL) == -1) {
@@ -117,6 +115,7 @@ int main(int argc, char ** argv) {
 		}
 	}
 
+	close_all();
 	close(ev_log);
 
 	return 0;
@@ -133,7 +132,7 @@ void handle_child(const local_id _local_id) {
 
 	// создаем сообщение STARTED и отправляем его всем процессам
 	Message * msg = calloc(1, sizeof(Message));
-	init_message(msg, "HI!", STARTED);
+	init_message(msg, log_msg, STARTED);
 	send_multicast(NULL, msg);
 
 	// ожидаем от всех дочерних процессов сообщение STARTED
@@ -150,7 +149,7 @@ void handle_child(const local_id _local_id) {
 
 	// отправляем всем сообщение DONE
 	memset(msg, 0, sizeof(Message));
-	init_message(msg, "BY!", DONE);
+	init_message(msg, log_msg, DONE);
 	if (send_multicast(NULL, msg) < 0) {
 		perror("send_multicast");
 		_exit(-12);
@@ -182,8 +181,12 @@ void init_message(Message * const msg, const char * const line,
 	// заполнение заголовка сообщения
 	header.s_local_time = (timestamp_t) time(NULL); // время создания сообщения
 	header.s_magic = MESSAGE_MAGIC; // магическое число по заданию
-	header.s_payload_len = strlen(line); // длина передаваемого сообщения
 	header.s_type = type; // тип сообщения
-	strcpy(msg->s_payload, line); // текст сообщения
+	if (line != NULL) {
+		header.s_payload_len = strlen(line); // длина передаваемого сообщения
+		strcpy(msg->s_payload, line); // текст сообщения
+	} else {
+		header.s_payload_len = 0;
+	}
 	msg->s_header = header;
 }

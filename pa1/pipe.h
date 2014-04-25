@@ -73,6 +73,6 @@ int get_write(const local_id id_src, const local_id id_dst);
 void flush_pipes_to_log();
 
 /* Закрывает все дескрипторы каналов */
-static void close_all(void);
+void close_all(void);
 
 #endif /* PIPE_H_ */
