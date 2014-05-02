@@ -93,7 +93,7 @@ timestamp_t get_lamport_time();
  *
  * Emulates physical clock (for each process).
  */
-//timestamp_t get_physical_time();
+timestamp_t get_physical_time();
 
 /** Pretty print for BalanceHistories.
  * 
