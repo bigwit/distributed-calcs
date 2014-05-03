@@ -20,6 +20,8 @@
 /* Получить канал в указанной позиции */
 static pipe_t * get(const size_t i, const size_t j);
 
+static void set_nonbloking(const int * fds);
+
 /* запись каналов в лог */
 void flush_pipes_to_log();
 
@@ -48,11 +50,26 @@ int init_pipes(const size_t _num_proc) {
 				if (pipe((int *) get(i, j)) == -1) {
 					return -1;
 				}
+				set_nonbloking((int *) get(i, j));
 			}
 		}
 	}
 
 	return 0;
+}
+
+static void set_nonbloking(const int * fds) {
+	int flags;
+	for (int i = 0, fd = *fds; i < 2; i++, fds++) {
+		if ((flags = fcntl(fd, F_GETFL)) == -1) {
+			perror("fcntl");
+			_exit(-1);
+		}
+		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+			perror("fcntl");
+			_exit(-1);
+		}
+	}
 }
 
 void configure_pipes(const local_id id_proc) {
