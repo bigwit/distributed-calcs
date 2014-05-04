@@ -5,11 +5,11 @@
  *      Author: nikit
  */
 
-#include <sys/types.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/fcntl.h>
 #include <stddef.h>
 #include <malloc.h>
-#include <fcntl.h>
 #include <string.h>
 #include "pipe.h"
 #include "common.h"
@@ -20,10 +20,12 @@
 /* Получить канал в указанной позиции */
 static pipe_t * get(const size_t i, const size_t j);
 
-static void set_nonbloking(const int * fds);
+//static void set_nonbloking(const int * fds);
 
 /* запись каналов в лог */
 void flush_pipes_to_log();
+
+extern int pipe2(int __pipedes[2], int __flags) __THROW __wur;
 
 /* дескрипторы каналов */
 pipe_t * pipes;
@@ -47,29 +49,14 @@ int init_pipes(const size_t _num_proc) {
 		for (size_t j = 0; j < num_proc; j++) {
 			// на главной диагонали все каналы должны быть закрыты
 			if (i != j) {
-				if (pipe((int *) get(i, j)) == -1) {
+				if (pipe2((int *) get(i, j), O_NONBLOCK) == -1) {
 					return -1;
 				}
-				set_nonbloking((int *) get(i, j));
 			}
 		}
 	}
 
 	return 0;
-}
-
-static void set_nonbloking(const int * fds) {
-	int flags;
-	for (int i = 0, fd = *fds; i < 2; i++, fds++) {
-		if ((flags = fcntl(fd, F_GETFL)) == -1) {
-			perror("fcntl");
-			_exit(-1);
-		}
-		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-			perror("fcntl");
-			_exit(-1);
-		}
-	}
 }
 
 void configure_pipes(const local_id id_proc) {

@@ -22,7 +22,8 @@ int send(void * self, local_id dst, const Message * msg) {
 	if (pipedes < 0) {
 		return -1;
 	}
-	while (write(pipedes, msg, sizeof(*msg)) <= 0)
+	while (write(pipedes, msg,
+			sizeof(MessageHeader) + msg->s_header.s_payload_len) <= 0)
 		;
 	return 0;
 }
@@ -42,11 +43,8 @@ int receive(void * self, local_id from, Message * msg) {
 	int pipedes = get_read(my_local_id, from);
 	// сообщения ожидаются только от дочернего процесса,
 	// родительский только принимает сообщения
-	if (pipedes <= 0) {
-		return -1;
-	}
-	while (read(pipedes, msg, sizeof(*msg)) <= 0)
-		;
+	while (read(pipedes, &msg->s_header, sizeof(MessageHeader)) <= 0);
+	while (read(pipedes, &msg->s_payload, msg->s_header.s_payload_len) == -1);
 	return 0;
 }
 
@@ -63,8 +61,11 @@ int receive_any(void * self, Message * msg) {
 		// получаем дескриптор канала на чтение
 		int pipe_fd = get_read(my_local_id, from);
 		// и ожидаем сообщения от них
-		if ((status = read(pipe_fd, msg, sizeof(*msg))) > 0) {
+		if (read(pipe_fd, &msg->s_header, sizeof(MessageHeader)) > 0) {
 			*((local_id *) self) = from;
+
+			while (read(pipe_fd, msg->s_payload, msg->s_header.s_payload_len) == -1);
+
 			return 0;
 		}
 	}

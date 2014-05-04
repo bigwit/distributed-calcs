@@ -11,6 +11,7 @@ all: clean install
 
 install: compile
 	@echo "Installing pa2..."
+	export LD_PRELOAD=/home/nikit/distributed-calcs/pa2/libruntime.so
 	$(CC) $(CFLAGS) -o $(OUTFILE) $(OBJ) $(LDPATH) $(LDLIBS)
 	@echo "=================================="
 	@echo "BUILD SUCCESS"
