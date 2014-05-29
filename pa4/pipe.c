@@ -20,9 +20,6 @@
 /* Получить канал в указанной позиции */
 static pipe_t * get(const size_t i, const size_t j);
 
-/* устанавливает флаг O_NONBLOCK для дескрипторов каналов */
-static void set_nonblocking(const int * fds);
-
 /* запись каналов в лог */
 void flush_pipes_to_log();
 
@@ -31,6 +28,8 @@ pipe_t * pipes;
 
 /* количество процессов, связанных каналами */
 size_t num_proc;
+
+extern int pipe2(int __pipedes[2], int __flags) __THROW __wur;
 
 int init_pipes(const size_t _num_proc) {
 	// если ранее уже выделялась память под каналы,
@@ -50,7 +49,7 @@ int init_pipes(const size_t _num_proc) {
 			// на главной диагонали все каналы должны быть закрыты
 			if (i != j) {
 				fds = (int *) get(i, j);
-				if (pipe(fds) == -1) {
+				if (pipe2(fds, O_NONBLOCK) == -1) {
 					return -1;
 				}
 				set_nonblocking(fds);
@@ -59,21 +58,6 @@ int init_pipes(const size_t _num_proc) {
 	}
 
 	return 0;
-}
-
-static void set_nonblocking(const int * fds) {
-	int fd, flags;
-	for (int i = 0; i < 2; i++) {
-		fd = fds[i];
-		if ((flags = fcntl(fd, F_GETFL)) == -1) {
-			perror("fcntl");
-			_exit(-1);
-		}
-		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-			perror("fcntl");
-			_exit(-1);
-		}
-	}
 }
 
 void configure_pipes(const local_id id_proc) {
