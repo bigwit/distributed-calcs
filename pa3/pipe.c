@@ -20,8 +20,6 @@
 /* Получить канал в указанной позиции */
 static pipe_t * get(const size_t i, const size_t j);
 
-//static void set_nonbloking(const int * fds);
-
 /* запись каналов в лог */
 void flush_pipes_to_log();
 
