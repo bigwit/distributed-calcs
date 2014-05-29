@@ -1,10 +1,11 @@
 CC=gcc
 OUTFILE=pa3
 TMPDIR=pa3
-CFLAGS=-std=c99 -Wall -pedantic
 OBJ=pa23.o bank_robbery.o pipe.o ipc.o lamport.o
 SOURCES=pa23.c bank_robbery.c pipe.c ipc.c lamport.c
 HEADERS=banking.h common.h ipc.h lamport.h pa2345.h pipe.h
+
+CFLAGS=-std=c99 -Wall -pedantic
 
 TAR=$(OUTFILE).tar
 TARGZ=$(TAR).gz
@@ -16,7 +17,6 @@ all: clean install
 
 install: compile
 	@echo "Installing pa3..."
-	export LD_PRELOAD=/home/nikit/distributed-calcs/pa2/libruntime.so
 	$(CC) $(CFLAGS) -o $(OUTFILE) $(OBJ) $(LDPATH) $(LDLIBS)
 	@echo "=================================="
 	@echo "BUILD SUCCESS"

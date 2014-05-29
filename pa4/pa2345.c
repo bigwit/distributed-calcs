@@ -14,7 +14,3 @@ int request_cs(const void * self) {
 int release_cs(const void * self) {
 	return 0;
 }
-
-void print(const char * s) {
-
-}
