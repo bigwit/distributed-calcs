@@ -1,9 +1,9 @@
 CC=gcc
 OUTFILE=pa4
 TMPDIR=pa4
-OBJ=pipe.o main.o ipc.o pa2345.o
-SOURCES=pipe.c main.c ipc.c pa2345.c
-HEADERS=common.h ipc.h pa2345.h pipe.h
+OBJ=pipe.o main.o ipc.o pa2345.o lamport.o
+SOURCES=pipe.c main.c ipc.c pa2345.c lamport.c
+HEADERS=common.h ipc.h pa2345.h pipe.h lamport.h
 
 CFLAGS=-std=c99 -Wall -pedantic
 
@@ -55,7 +55,7 @@ clean-package:
 	rm -f $(TAR) $(TARGZ)
 	@echo ' '
 	
-clean: clean-obj
+clean: clean-package clean-obj
 	@echo "Remove executable file..."
 	rm -f $(OUTFILE)
 	@echo ' '
