@@ -40,7 +40,8 @@ void push(const local_id id_proc) {
 }
 
 local_id next_proc(void) {
-	entry_t * entry = head;
+	entry_t entry = head;
+	local_id id_proc = entry.id_proc;
 	// если следующий элемент в очереди существует
 	if (head->next != NULL) {
 		// началом очереди становится следующий элемент
@@ -51,7 +52,9 @@ local_id next_proc(void) {
 		// обнуляем начало и конец очереди
 		head = tail = NULL;
 	}
-	return entry;
+	// освобождаем память из-под выбранного элемента
+	free(entry);
+	return id_proc;
 }
 
 int is_empty_queue(void) {
