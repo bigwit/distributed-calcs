@@ -52,7 +52,6 @@ int init_pipes(const size_t _num_proc) {
 				if (pipe2(fds, O_NONBLOCK) == -1) {
 					return -1;
 				}
-				set_nonblocking(fds);
 			}
 		}
 	}

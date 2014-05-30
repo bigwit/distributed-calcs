@@ -55,24 +55,43 @@ extern char * optarg;
 local_id my_local_id = 0;
 int ev_log;
 
+// 1, если параметр --mutexl указан, 0 в противном случае
+int is_mutex = 0;
+
 char log_msg[LIMIT_SIZE_LOG_MESSAGE];
 
 int main(int argc, char ** argv) {
 	pid_t pid;
 
-	switch (getopt(argc, argv, "p:")) {
-	case '?':
-		_exit(-1);
-	case -1:
-		fprintf(stderr, "Parameter '-p' is required\n");
-		_exit(-1);
+	const char * short_opts = "mp:";
+	const struct option long_opts[] = {
+			{ "mutexl", no_argument, NULL, 'm' },
+			{ NULL, 0, NULL, 0 }
+	};
+
+	int opt;
+	int opt_index;
+	int num_proc;
+
+	while ((opt = getopt_long(argc, argv, short_opts, long_opts, &opt_index))
+			!= -1) {
+		switch (opt) {
+		case 'p':
+			printf("parameter p\n");
+			num_proc = atoi(optarg);
+			if (num_proc <= 0 || num_proc > 10) {
+				fprintf(stderr, "Invalid number processes\n");
+				_exit(-2);
+			}
+			break;
+		case 'm': is_mutex = 1; break;
+		case '?': default:
+			fprintf(stderr, "unknown option: %c\n", opt);
+			_exit(-1);
+		}
 	}
 
-	int num_proc = atoi(optarg);
-	if (num_proc <= 0 || num_proc > 10) {
-		fprintf(stderr, "Invalid number processes\n");
-		_exit(-2);
-	}
+	return 0;
 
 	ev_log = open(evengs_log, LOG_FILE_FLAGS, PERM);
 	if (ev_log == -1) {
