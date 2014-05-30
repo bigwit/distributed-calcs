@@ -8,10 +8,12 @@
 #include <malloc.h>
 #include <stddef.h>
 
+#include "ipc.h"
+
 typedef struct self {
 	local_id id_proc;
 	struct self * next;
-} entry_t __attribute__((packed));
+} __attribute__((packed)) entry_t;
 
 // первый элемент очереди
 static entry_t * head = NULL;
@@ -40,8 +42,8 @@ void push(const local_id id_proc) {
 }
 
 local_id next_proc(void) {
-	entry_t entry = head;
-	local_id id_proc = entry.id_proc;
+	entry_t * entry = head;
+	local_id id_proc = entry->id_proc;
 	// если следующий элемент в очереди существует
 	if (head->next != NULL) {
 		// началом очереди становится следующий элемент
