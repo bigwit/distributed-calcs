@@ -16,10 +16,12 @@
 #include <time.h>
 #include <unistd.h>
 #include <wait.h>
+
 #include "common.h"
 #include "ipc.h"
 #include "pipe.h"
 #include "pa2345.h"
+#include "lamport.h"
 
 #define LIMIT_SIZE_LOG_MESSAGE 1024
 #define PERM 0666
@@ -91,8 +93,6 @@ int main(int argc, char ** argv) {
 		}
 	}
 
-	return 0;
-
 	ev_log = open(evengs_log, LOG_FILE_FLAGS, PERM);
 	if (ev_log == -1) {
 		fprintf(stderr, "Log 'events' is not initialize\n");
@@ -117,12 +117,12 @@ int main(int argc, char ** argv) {
 	// дожидаемся сообщений старта и завершения
 	// всех дочерних процессов
 	wait_all(STARTED);
-	sprintf(log_msg, log_received_all_started_fmt, 0);
+	sprintf(log_msg, log_received_all_started_fmt, get_lamport_time(), 0);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
 	wait_all(DONE);
-	sprintf(log_msg, log_received_all_done_fmt, 0);
+	sprintf(log_msg, log_received_all_done_fmt, get_lamport_time(), 0);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
@@ -142,7 +142,7 @@ int main(int argc, char ** argv) {
 
 void handle_child(const local_id _local_id) {
 	my_local_id = _local_id;
-	sprintf(log_msg, log_started_fmt, _local_id, getpid(), getppid());
+	sprintf(log_msg, log_started_fmt, get_lamport_time(), _local_id, getpid(), getppid(), 0);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
@@ -152,23 +152,39 @@ void handle_child(const local_id _local_id) {
 	// создаем сообщение STARTED и отправляем его всем процессам
 	Message * msg = calloc(1, sizeof(Message));
 	init_message(msg, log_msg, STARTED);
+	inc_lamport_time();
+	msg->s_header.s_local_time = get_lamport_time();
 	send_multicast(NULL, msg);
 
 	// ожидаем от всех дочерних процессов сообщение STARTED
 	wait_all(STARTED);
-	sprintf(log_msg, log_received_all_started_fmt, _local_id);
+	sprintf(log_msg, log_received_all_started_fmt, get_lamport_time(), _local_id);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
-	// делаем полезную работу (логирование добавится позже...)
+	char * str = (char *) calloc(256, sizeof(char));
+	char * buf = (char *) calloc(256, sizeof(char));
+	for (int i = 1; i <= my_local_id * 5; i++) {
+		sprintf(str, log_loop_operation_fmt, my_local_id, i, my_local_id * 5);
+		if (is_mutex) {
+			request_cs(&my_local_id);
+		}
+		memcpy(buf, str, 256);
+		print(buf);
+		if (is_mutex) {
+			release_cs(&my_local_id);
+		}
+	}
 
-	sprintf(log_msg, log_done_fmt, _local_id);
+	sprintf(log_msg, log_done_fmt, get_lamport_time(), _local_id, 0);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
 	// отправляем всем сообщение DONE
 	memset(msg, 0, sizeof(Message));
 	init_message(msg, log_msg, DONE);
+	inc_lamport_time();
+	msg->s_header.s_local_time = get_lamport_time();
 	if (send_multicast(NULL, msg) < 0) {
 		perror("send_multicast");
 		_exit(-12);
@@ -183,7 +199,7 @@ void handle_child(const local_id _local_id) {
 	}
 
 	// write to log (received_all_done)
-	sprintf(log_msg, log_received_all_done_fmt, _local_id);
+	sprintf(log_msg, log_received_all_done_fmt, get_lamport_time(), _local_id);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 

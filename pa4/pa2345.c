@@ -6,6 +6,7 @@
  */
 
 #include "pa2345.h"
+#include "ipc.h"
 
 int request_cs(const void * self) {
 	return 0;

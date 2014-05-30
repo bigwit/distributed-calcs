@@ -79,7 +79,7 @@ int wait_all(const MessageType type, int * excludes) {
 	// выделяем память под сообщение для сравнения типов
 	Message msg;
 	for (local_id i = 1; i < num_proc; i++) {
-		if (i == my_local_id || (excludes != NULL && excludes[i] != 0)) {
+		if (i == my_local_id) {
 			continue;
 		}
 		// получаем сообщение от процесса
