@@ -7,6 +7,7 @@
 
 #include <malloc.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "ipc.h"
 #include "lamport.h"
@@ -17,63 +18,80 @@ extern void init_message(Message * const msg, const char * const line,
 		const MessageType type);
 
 extern size_t num_proc;
-
+extern int done_count;
 extern local_id my_local_id;
 
-static int is_all_responded(const char * st, const size_t size);
-
 int request_cs(const void * self) {
-	Message msg;
-	memset(&msg, 0, sizeof(msg));
+	if (done_count == 0) {
+		inc_lamport_time();
+		return 0;
+	}
+	Message * msg = (Message *) calloc(1, sizeof(Message));
+	memset(msg, 0, sizeof(Message));
 	inc_lamport_time();
-	init_message(&msg, NULL, CS_REQUEST);
+	init_message(msg, NULL, CS_REQUEST);
 	queue_push(my_local_id, get_lamport_time());
 	for (local_id id_from = 1; id_from <= num_proc; id_from++) {
-		send(NULL, id_from, &msg);
+		if (id_from != my_local_id) {
+			send(NULL, id_from, msg);
+		}
 	}
 
 	local_id from;
 
-	char * st_answer = (char *) calloc(num_proc - 1, sizeof(char));
-	st_answer[my_local_id - 1] = 1;
-	while (!is_all_responded(st_answer, num_proc - 1)
-			&& get_head() != my_local_id) {
-		memset(&msg, 0, sizeof(msg));
-		receive_any(&from, &msg);
+	int count_reply = num_proc - 2;
 
-		switch (msg.s_header.s_type) {
+	while (1) {
+		memset(msg, 0, sizeof(Message));
+		receive_any(&from, msg);
+//		printf("%d: type message %d\n", my_local_id, msg->s_header.s_type);
+		switch (msg->s_header.s_type) {
 		case CS_REPLY: {
-			st_answer[from - 1] = 1;
+			count_reply--;
+//			printf("%d: reply head - %d\n", my_local_id, get_head());
+			if (count_reply <= 0 && get_head() == my_local_id) {
+				return 0;
+			}
 			break;
 		}
 		case CS_REQUEST: {
-			queue_push(from, msg.s_header.s_local_time);
-			memset(&msg, 0, sizeof(msg));
+//			printf("%d: request\n", my_local_id);
+			queue_push(from, msg->s_header.s_local_time);
+			memset(msg, 0, sizeof(Message));
 			inc_lamport_time();
-			init_message(&msg, NULL, CS_REPLY);
-			send(NULL, from, &msg);
+			init_message(msg, NULL, CS_REPLY);
+			send(NULL, from, msg);
 			break;
 		}
 		case CS_RELEASE: {
+//			printf("%d: release\n", my_local_id);
 			next_proc();
+			if (get_head() == my_local_id) {
+				return 0;
+			}
 			break;
 		}
+		case DONE: {
+			done_count--;
+			if (done_count <= 0) {
+				return 0;
+			}
+			break;
+		}
+		default:
+			fprintf(stderr, "unknown type message: %d\n", msg->s_header.s_type);
 		}
 	}
 
+	free(msg);
 	return 0;
 }
 
-static int is_all_responded(const char * st, const size_t size) {
-	for (size_t i = 0; i < size; i++) {
-		if (!st[i]) {
-			return 0;
-		}
-	}
-	return 1;
-}
-
 int release_cs(const void * self) {
+	if (done_count == 0) {
+		inc_lamport_time();
+		return 0;
+	}
 	Message msg;
 	memset(&msg, 0, sizeof(msg));
 

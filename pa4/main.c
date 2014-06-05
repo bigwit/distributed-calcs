@@ -54,6 +54,7 @@ void init_message(Message * const msg, const char * const line,
  */
 extern int wait_all(const MessageType type);
 
+extern size_t num_proc;
 extern char * optarg;
 local_id my_local_id = 0;
 int ev_log;
@@ -123,68 +124,19 @@ int main(int argc, char ** argv) {
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
-//	char * dones = (char *) calloc(num_proc, sizeof(char));
-//	Message * msg = (Message *) calloc(1, sizeof(Message));
-//	local_id from = 0;
-//	local_id busy = 0;
-//
-//	// пока все дочерние процессы не завершат работу
-//	while (!is_all_done(dones, num_proc)) {
-//		// получаем сообщение от одного из дочерних процессов
-//		receive_any(&from, msg);
-//		switch (msg->s_header.s_type) {
-//		// если какой-либо процесс завершил работу
-//		case DONE: {
-//		// занести процесс с данным идентификатором в список завершенных
-//			dones[from - 1] = 1;
-//			break;
-//		}
-//		// если пришел запрос на освобождение КС
-//		case CS_RELEASE: {
-//			// если КС занята процессом и сообщение
-//			// пришло от того же процесса, кто занял КС
-//			if (busy && busy == from) {
-//				// освободить КС
-//				busy = 0;
-//				// если очередь не пуста
-//				if (!is_empty_queue()) {
-//					// занести следующий процесс в КС
-//					from = next_proc();
-//					inc_lamport_time();
-//					init_message(msg, NULL, CS_REPLY);
-//					send(NULL, from, msg);
-//				}
-//			}
-//			break;
-//		}
-//		// если пришел запрос на захват КС
-//		case CS_REQUEST: {
-//			// если очередь пуста
-//			if (is_empty_queue()) {
-//				// процесс с идентификатором from занимает КС
-//				busy = from;
-//				// разрешаем выполнение КС процессу from
-//				inc_lamport_time();
-//				init_message(msg, NULL, CS_REPLY);
-//				send(NULL, from, msg);
-//			}
-//			// если очередь не пуста
-//			else {
-//				// добавляем процесс в очередь
-//				queue_push(from);
-//			}
-//			break;
-//		}
-//		// если пришло сообщение неизвестного типа
-//		default: {
-//			fprintf(stderr,
-//					"unknown message type, expected CS_REQUEST, CS_RELEASE or DONE\n");
-//			_exit(-1);
-//		}
-//		}
-//	}
-
-	wait_all(DONE);
+	printf("===================\n");
+//	wait_all(DONE);
+	Message * msg = (Message *) calloc(1, sizeof(Message));
+	int done_count = num_proc - 1;
+	int from;
+	for (; done_count != 0;) {
+		receive_any(&from, msg);
+		printf("root process done %d\n", from);
+		if (msg->s_header.s_type == DONE) {
+			done_count--;
+			break;
+		}
+	}
 	sprintf(log_msg, log_received_all_done_fmt, get_lamport_time(), 0);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
@@ -202,23 +154,14 @@ int main(int argc, char ** argv) {
 
 	return 0;
 }
-//
-//static int is_all_done(const char * dones, const size_t size) {
-//	for (size_t i = 0; i < size; i++) {
-//		if (dones[i] == 0) {
-//			return 0;
-//		}
-//	}
-//	return 1;
-//}
 
+int done_count;
 void handle_child(const local_id _local_id) {
 	my_local_id = _local_id;
 	sprintf(log_msg, log_started_fmt, get_lamport_time(), _local_id, getpid(),
 			getppid(), 0);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
-
 	// дочерний процесс закрывает ненужные дескрипторы каналов
 	configure_pipes(my_local_id);
 
@@ -235,6 +178,7 @@ void handle_child(const local_id _local_id) {
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
+	done_count = num_proc - 2;
 	char * str = (char *) calloc(256, sizeof(char));
 	for (int i = 1; i <= my_local_id * 5; i++) {
 		sprintf(str, log_loop_operation_fmt, my_local_id, i, my_local_id * 5);
@@ -263,13 +207,37 @@ void handle_child(const local_id _local_id) {
 	free(msg);
 
 	// ожидаем от всех дочерних процессов сообщение DONE
-	if (wait_all(DONE) < 0) {
-		perror("wait_all");
-		_exit(-11);
+//	if (wait_all(DONE) < 0) {
+//		perror("wait_all");
+//		_exit(-11);
+//	}
+	int from;
+	memset(msg, 0, sizeof(Message));
+	for (; done_count != 0;) {
+		receive_any(&from, msg);
+		switch (msg->s_header.s_type) {
+		case DONE: {
+			done_count--;
+			break;
+		}
+		case CS_REQUEST: {
+			memset(msg, 0, sizeof(Message));
+			inc_lamport_time();
+			init_message(msg, NULL, CS_REPLY);
+			send(NULL, from, msg);
+			break;
+		}
+		case CS_RELEASE: {
+			break;
+		}
+		default:
+			break;
+		}
 	}
 
 	// write to log (received_all_done)
-	sprintf(log_msg, log_received_all_done_fmt, get_lamport_time(), _local_id);
+	sprintf(log_msg, log_received_all_done_fmt, get_lamport_time(),
+			my_local_id);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 

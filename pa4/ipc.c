@@ -79,7 +79,7 @@ int receive_any(void * self, Message * msg) {
 	return -1;
 }
 
-int wait_all(const MessageType type, int * excludes) {
+int wait_all(const MessageType type) {
 	// выделяем память под сообщение для сравнения типов
 	Message msg;
 	for (local_id i = 1; i < num_proc; i++) {
@@ -94,7 +94,7 @@ int wait_all(const MessageType type, int * excludes) {
 		}
 		// проверяем, что пришедшее сообщение того же типа, что и ожидалось
 		if (msg.s_header.s_type != type) {
-			fprintf(stderr, "expected type %d, but received %d\n", type,
+			fprintf(stderr, "process %d, expected type %d, but received %d\n", i, type,
 					msg.s_header.s_type);
 			return -1;
 		}
