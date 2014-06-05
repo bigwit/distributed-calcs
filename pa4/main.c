@@ -19,9 +19,10 @@
 
 #include "common.h"
 #include "ipc.h"
-#include "pipe.h"
-#include "pa2345.h"
 #include "lamport.h"
+#include "pa2345.h"
+#include "pipe.h"
+#include "queue.h"
 
 #define LIMIT_SIZE_LOG_MESSAGE 1024
 #define PERM 0666
@@ -66,10 +67,8 @@ int main(int argc, char ** argv) {
 	pid_t pid;
 
 	const char * short_opts = "mp:";
-	const struct option long_opts[] = {
-			{ "mutexl", no_argument, NULL, 'm' },
-			{ NULL, 0, NULL, 0 }
-	};
+	const struct option long_opts[] = { { "mutexl", no_argument, NULL, 'm' }, {
+	NULL, 0, NULL, 0 } };
 
 	int opt;
 	int opt_index;
@@ -86,8 +85,11 @@ int main(int argc, char ** argv) {
 				_exit(-2);
 			}
 			break;
-		case 'm': is_mutex = 1; break;
-		case '?': default:
+		case 'm':
+			is_mutex = 1;
+			break;
+		case '?':
+		default:
 			fprintf(stderr, "unknown option: %c\n", opt);
 			_exit(-1);
 		}
@@ -121,6 +123,67 @@ int main(int argc, char ** argv) {
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
+//	char * dones = (char *) calloc(num_proc, sizeof(char));
+//	Message * msg = (Message *) calloc(1, sizeof(Message));
+//	local_id from = 0;
+//	local_id busy = 0;
+//
+//	// пока все дочерние процессы не завершат работу
+//	while (!is_all_done(dones, num_proc)) {
+//		// получаем сообщение от одного из дочерних процессов
+//		receive_any(&from, msg);
+//		switch (msg->s_header.s_type) {
+//		// если какой-либо процесс завершил работу
+//		case DONE: {
+//		// занести процесс с данным идентификатором в список завершенных
+//			dones[from - 1] = 1;
+//			break;
+//		}
+//		// если пришел запрос на освобождение КС
+//		case CS_RELEASE: {
+//			// если КС занята процессом и сообщение
+//			// пришло от того же процесса, кто занял КС
+//			if (busy && busy == from) {
+//				// освободить КС
+//				busy = 0;
+//				// если очередь не пуста
+//				if (!is_empty_queue()) {
+//					// занести следующий процесс в КС
+//					from = next_proc();
+//					inc_lamport_time();
+//					init_message(msg, NULL, CS_REPLY);
+//					send(NULL, from, msg);
+//				}
+//			}
+//			break;
+//		}
+//		// если пришел запрос на захват КС
+//		case CS_REQUEST: {
+//			// если очередь пуста
+//			if (is_empty_queue()) {
+//				// процесс с идентификатором from занимает КС
+//				busy = from;
+//				// разрешаем выполнение КС процессу from
+//				inc_lamport_time();
+//				init_message(msg, NULL, CS_REPLY);
+//				send(NULL, from, msg);
+//			}
+//			// если очередь не пуста
+//			else {
+//				// добавляем процесс в очередь
+//				queue_push(from);
+//			}
+//			break;
+//		}
+//		// если пришло сообщение неизвестного типа
+//		default: {
+//			fprintf(stderr,
+//					"unknown message type, expected CS_REQUEST, CS_RELEASE or DONE\n");
+//			_exit(-1);
+//		}
+//		}
+//	}
+
 	wait_all(DONE);
 	sprintf(log_msg, log_received_all_done_fmt, get_lamport_time(), 0);
 	printf(log_msg, NULL);
@@ -139,10 +202,20 @@ int main(int argc, char ** argv) {
 
 	return 0;
 }
+//
+//static int is_all_done(const char * dones, const size_t size) {
+//	for (size_t i = 0; i < size; i++) {
+//		if (dones[i] == 0) {
+//			return 0;
+//		}
+//	}
+//	return 1;
+//}
 
 void handle_child(const local_id _local_id) {
 	my_local_id = _local_id;
-	sprintf(log_msg, log_started_fmt, get_lamport_time(), _local_id, getpid(), getppid(), 0);
+	sprintf(log_msg, log_started_fmt, get_lamport_time(), _local_id, getpid(),
+			getppid(), 0);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
@@ -151,26 +224,24 @@ void handle_child(const local_id _local_id) {
 
 	// создаем сообщение STARTED и отправляем его всем процессам
 	Message * msg = calloc(1, sizeof(Message));
-	init_message(msg, log_msg, STARTED);
 	inc_lamport_time();
-	msg->s_header.s_local_time = get_lamport_time();
+	init_message(msg, log_msg, STARTED);
 	send_multicast(NULL, msg);
 
 	// ожидаем от всех дочерних процессов сообщение STARTED
 	wait_all(STARTED);
-	sprintf(log_msg, log_received_all_started_fmt, get_lamport_time(), _local_id);
+	sprintf(log_msg, log_received_all_started_fmt, get_lamport_time(),
+			_local_id);
 	printf(log_msg, NULL);
 	write(ev_log, log_msg, strlen(log_msg));
 
 	char * str = (char *) calloc(256, sizeof(char));
-	char * buf = (char *) calloc(256, sizeof(char));
 	for (int i = 1; i <= my_local_id * 5; i++) {
 		sprintf(str, log_loop_operation_fmt, my_local_id, i, my_local_id * 5);
 		if (is_mutex) {
 			request_cs(&my_local_id);
 		}
-		memcpy(buf, str, 256);
-		print(buf);
+		print(str);
 		if (is_mutex) {
 			release_cs(&my_local_id);
 		}
@@ -182,9 +253,8 @@ void handle_child(const local_id _local_id) {
 
 	// отправляем всем сообщение DONE
 	memset(msg, 0, sizeof(Message));
-	init_message(msg, log_msg, DONE);
 	inc_lamport_time();
-	msg->s_header.s_local_time = get_lamport_time();
+	init_message(msg, log_msg, DONE);
 	if (send_multicast(NULL, msg) < 0) {
 		perror("send_multicast");
 		_exit(-12);
@@ -214,7 +284,7 @@ void init_message(Message * const msg, const char * const line,
 		const MessageType type) {
 	MessageHeader header;
 	// заполнение заголовка сообщения
-	header.s_local_time = (timestamp_t) time(NULL); // время создания сообщения
+	header.s_local_time = get_lamport_time(); // время создания сообщения
 	header.s_magic = MESSAGE_MAGIC; // магическое число по заданию
 	header.s_type = type; // тип сообщения
 	if (line != NULL) {

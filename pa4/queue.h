@@ -8,15 +8,19 @@
 #ifndef QUEUE_H_
 #define QUEUE_H_
 
+#include "ipc.h"
+
 /**
  * Занять место в очереди
  */
-void push(const local_id id_proc);
+void queue_push(const local_id id_proc, const timestamp_t local_time);
 
 /**
  * Следующий процесс в очереди
  */
 local_id next_proc(void);
+
+local_id get_head(void);
 
 /**
  * Проверяет размер очереди. Если очередь пуста,

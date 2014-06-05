@@ -31,7 +31,11 @@ int send(void * self, local_id dst, const Message * msg) {
 }
 
 int send_multicast(void * self, const Message * msg) {
-	for (local_id id_dst = 0; id_dst < num_proc; id_dst++) {
+	local_id id_dst = 0;
+	if (self) {
+		id_dst = *((local_id *) self);
+	}
+	for (; id_dst < num_proc; id_dst++) {
 		if (id_dst != my_local_id) {
 			if (send(self, id_dst, msg) != 0) {
 				return -1;
